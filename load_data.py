@@ -20,6 +20,8 @@ def load_data():
     print(f'sample structure: {sample.keys()}')
     return personachat
 
+
+# split the utterances into human and bot responses
 def split_utterances(data_split):
     data = []
 
@@ -28,6 +30,7 @@ def split_utterances(data_split):
         persona = sample['personality']
         utterances = sample['utterances']
         # print(persona, utterances)
+
         # concatenate a persona text
         persona_text = ''.join(persona)
 
@@ -46,6 +49,7 @@ def split_utterances(data_split):
                 'human_utterance': human_utterance,
                 'bot_response': bot_response
             })
+    # pd.DataFrame(data).to_csv('persona_chat.csv', index=False)
     return pd.DataFrame(data)
 
 def tokenize_data(df, tokenizer, max_length=1024):
@@ -89,6 +93,33 @@ class PersonaDataset(Dataset):
             'labels': self.labels[idx]
         }
 
+def setup_model():
+    model = AutoModelForCausaLM.from_pretrained(
+        'llama',
+        torch_dtype=torch.float16 ,
+        device_map=None
+    )
+
+    # Using LoRA for efficient fine-tuning
+    target_modules = ['q_proj', 'v_proj']
+
+    lora_config = LoraConfig(
+        task_type=TaskType.CAUSAL_LM,
+        r=8,
+        lora_alpha=16,
+        lora_dropout=0.05,
+        bias='none',
+        target_models=target_modules
+    )
+
+    model = get_peft_model(model, lora_config)
+    model.print_trainable_parameters()
+
+return model, tokenizer
+
+def training(model, tokenizer, train_data, val_data, )
+
+
 persona_chat = load_data()
 # print(persona_chat)
 train_data = split_utterances(persona_chat['train'])
@@ -98,6 +129,8 @@ print(f'{len(train_data)} training samples, {len(val_data)} testing samples')
 
 tokenized_train = tokenize_data(train_data, tokenizer)
 tokenized_val = tokenize_data(val_data, tokenizer)
+
+print(type(tokenized_train['input_ids']))
 
 train_dataset = PersonaDataset(tokenized_train)
 val_dataset = PersonaDataset(tokenized_val)
